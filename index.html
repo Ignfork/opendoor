@@ -1,0 +1,1061 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="OpenDoor ($DOOR): stand in a Solana vault's withdrawal line, sell your place for SOL, or keep it and collect.">
+<meta name="theme-color" content="#060907">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 22'%3E%3Crect x='1' y='1' width='18' height='20' fill='%23060907' stroke='%235fe08e' stroke-width='2'/%3E%3Cpath d='M5 21V5h8l2 2v14' fill='%23123b24' stroke='%235fe08e' stroke-width='1.5'/%3E%3Crect x='11' y='12' width='2' height='2' fill='%235fe08e'/%3E%3C/svg%3E">
+<title>OpenDoor $DOOR</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: terminal shell. Top nav + status strip, status rail on the left, view stage in the middle, console drawer docked bottom right. All scenes are dithered dot-matrix canvases. */
+:root{
+  --bg:#060907;
+  --panel:#0b110d;
+  --panel2:#0f1812;
+  --rule:#1d2a21;
+  --rule2:#2a3b2f;
+  --grey:#7f8c83;
+  --dim:#4f5b53;
+  --fg:#e2ebe4;
+  --green:#5fe08e;
+  --green2:#2fae62;
+  --forest:#123b24;
+  --moss:#0d2418;
+  --display:"Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--mono);font-size:13px;line-height:1.5;min-height:100vh}
+a{color:inherit}
+button{font-family:var(--mono);cursor:pointer}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.tn{font-variant-numeric:tabular-nums}
+
+header.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--rule)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.navin{display:flex;align-items:center;gap:18px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:800;font-size:19px;text-decoration:none;letter-spacing:-.01em}
+.brand svg{display:block}
+.brand small{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--green);border:1px solid var(--forest);background:var(--moss);padding:1px 6px}
+.tabs{display:flex;gap:2px;flex-wrap:wrap}
+.tabs a{text-decoration:none;padding:4px 9px;color:var(--grey);font-weight:500}
+.tabs a:hover{color:var(--fg)}
+.tabs a[aria-current="page"]{background:var(--green);color:#04140a}
+.navr{margin-left:auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:7px;color:var(--grey);font-size:12px}
+.pill i{width:8px;height:8px;border:1px solid var(--grey);display:inline-block}
+.pill.on i{background:var(--green);border-color:var(--green);box-shadow:0 0 8px var(--green)}
+.btn{background:none;border:1px solid var(--rule2);color:var(--fg);padding:6px 12px;font-size:12.5px;font-weight:600;text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--green);color:var(--green)}
+.btn.solid{background:var(--green);border-color:var(--green);color:#04140a}
+.btn.solid:hover{background:#7ff0a8;color:#04140a}
+.btn.ghost{border-color:transparent}
+.xbtn{display:inline-flex;align-items:center;gap:7px}
+footer.foot{align-items:center}
+
+.strip{border-top:1px solid var(--rule);display:flex;gap:22px;overflow-x:auto;white-space:nowrap;font-size:11.5px;color:var(--grey);padding-block:5px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scrollbar-width:none}
+.strip b{color:var(--fg);font-weight:500}
+
+.shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:calc(100vh - 90px)}
+.rail{border-right:1px solid var(--rule);padding:14px 12px 120px max(12px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.stage{min-width:0;padding-block:22px 160px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.box{border:1px solid var(--rule2);background:var(--panel)}
+.boxh{display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid var(--rule2);font-size:11.5px;color:var(--grey);background:repeating-linear-gradient(0deg,var(--panel) 0 2px,var(--panel2) 2px 4px)}
+.boxh b{color:var(--fg);font-weight:500;background:var(--panel);padding:0 5px}
+.boxh .r{margin-left:auto}
+.boxb{padding:12px}
+.legend{font-size:11px;color:var(--dim);line-height:1.5;margin:0}
+.log{display:flex;flex-direction:column;gap:5px;font-size:11.5px;max-height:220px;overflow:hidden}
+.log .muted{margin-right:4px}
+
+.view{display:none}
+.view.on{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+h1,h2,h3{font-family:var(--display);font-weight:800;letter-spacing:-.025em;line-height:.98;margin:0;text-wrap:balance}
+h1{font-size:clamp(40px,6.2vw,82px)}
+h2{font-size:clamp(30px,4vw,52px)}
+h3{font-size:22px;letter-spacing:-.01em}
+.g{color:var(--green)}
+.muted{color:var(--grey)}
+.lede{font-family:var(--display);font-weight:600;font-size:17px;line-height:1.45;color:#c4cfc7;max-width:46ch;margin:0}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+.kv span:first-child{color:var(--grey)}
+.kv span:last-child{text-align:right}
+.sep{border-top:1px solid var(--rule);margin:8px 0}
+.lbl{display:block;font-size:11px;color:var(--grey);letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px}
+
+.hero{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.25fr);gap:26px;align-items:stretch}
+.heroL{display:flex;flex-direction:column;gap:22px;min-width:0}
+.heroR{position:relative;min-height:580px;border:1px solid var(--rule);background:var(--bg);min-width:0;overflow:hidden}
+#doorCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.float{position:absolute;font-size:12px;z-index:2}
+.lineCard{top:12px;right:12px;width:min(230px,calc(100% - 24px))}
+.slotCard{top:12px;left:12px;width:min(210px,calc(100% - 24px))}
+.slotCard p{margin:0;color:#c4cfc7;font-size:11.5px}
+.knock{bottom:12px;right:12px}
+
+.stand{border:1px solid var(--green);background:var(--panel);box-shadow:0 0 0 1px var(--moss),0 0 40px -10px rgba(95,224,142,.35)}
+.stand .boxh{border-color:var(--green2);background:repeating-linear-gradient(0deg,var(--moss) 0 2px,var(--forest) 2px 4px);color:var(--green)}
+.stand .boxh b{background:var(--moss);color:var(--green)}
+.standgrid{display:grid;grid-template-columns:170px 1fr}
+.standart{border-right:1px solid var(--rule);background:var(--bg);position:relative;min-height:150px}
+.standart canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.standform{padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.inp{display:flex;align-items:center;border-bottom:1px solid var(--green2);padding:2px 0 4px;margin-bottom:6px;gap:6px}
+.inp input{all:unset;flex:1;min-width:0;font-family:var(--mono);font-size:22px;font-weight:600;color:var(--fg);font-variant-numeric:tabular-nums}
+.inp.sm input{font-size:16px}
+.inp span{color:var(--green);font-weight:600}
+.cta{margin-top:10px;width:100%;padding:10px;font-size:13.5px;text-align:center}
+
+.steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--rule);margin-top:34px}
+.step{padding:16px 14px;border-right:1px solid var(--rule);min-width:0}
+.step:last-child{border-right:0}
+.step .n{font-size:11px;color:var(--green);margin-bottom:10px}
+.step h3{font-size:19px;margin-bottom:8px}
+.step p{margin:0;color:var(--grey);font-size:12.5px}
+
+.pane{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start}
+.pane > *{min-width:0}
+.col{display:flex;flex-direction:column;gap:12px}
+.vhead{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.vhead p{margin:0;color:#c4cfc7;max-width:56ch}
+.range{width:100%;accent-color:var(--green)}
+.callout{border:1px solid var(--green);background:var(--moss);padding:12px}
+.callout .bigv{font-size:24px;font-weight:600;color:var(--green)}
+.note{font-size:11.5px;color:var(--grey);margin:6px 0 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.scene{width:100%;display:block;background:var(--bg);border-bottom:1px solid var(--rule)}
+#lineCanvas{height:300px}
+#lifeCanvas{height:240px;border:1px solid var(--rule)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--rule2);background:none;color:var(--grey);padding:4px 9px;font-size:12px}
+.chip.on{border-color:var(--green);color:var(--green);background:var(--moss)}
+
+.bars{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.barrow{display:grid;grid-template-columns:110px 1fr auto;gap:10px;align-items:center;font-size:12px}
+.barrow .track{height:14px;background:var(--bg);border:1px solid var(--rule2);position:relative}
+.barrow .fill{position:absolute;inset:0 auto 0 0;background:repeating-linear-gradient(90deg,var(--green) 0 3px,transparent 3px 4px)}
+.barrow .fill.grey{background:repeating-linear-gradient(90deg,var(--grey) 0 3px,transparent 3px 4px)}
+
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th{font-weight:500;color:var(--grey);text-align:right;padding:7px 10px;border-bottom:1px solid var(--rule2);white-space:nowrap}
+td{text-align:right;padding:10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td.empty{text-align:left;color:var(--grey);white-space:normal}
+
+.wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;padding:12px}
+.pane-w{aspect-ratio:1;border:1px solid var(--rule2);background:repeating-linear-gradient(45deg,var(--bg) 0 3px,var(--panel) 3px 4px);display:flex;align-items:flex-start;padding:4px;font-size:10px;color:var(--dim);max-width:100%}
+
+.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.flow .box{min-width:0}
+.tiers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--rule2)}
+.tier{padding:14px;border-right:1px solid var(--rule);display:flex;flex-direction:column;gap:6px;min-width:0}
+.tier:last-child{border-right:0}
+.tier.on{background:var(--moss);box-shadow:inset 0 2px 0 var(--green)}
+.tier h3{font-size:20px}
+.tier ul{margin:4px 0 0;padding-left:16px;color:var(--grey);font-size:12px}
+.ca{display:flex;gap:8px;align-items:center;border:1px dashed var(--rule2);padding:10px 12px;flex-wrap:wrap}
+
+.life{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.faq details{border-bottom:1px solid var(--rule);padding:12px 0}
+.faq summary{cursor:pointer;font-family:var(--display);font-weight:600;font-size:16px;list-style:none}
+.faq summary::before{content:"+ ";color:var(--green);font-family:var(--mono)}
+.faq details[open] summary::before{content:"− "}
+.faq p{color:#c4cfc7;max-width:68ch;margin:8px 0 0}
+pre.code{margin:0;padding:12px;overflow-x:auto;font-size:12px;color:#b9c7bd;background:var(--bg);border-top:1px solid var(--rule)}
+pre.code .k{color:var(--green)}
+pre.code .c{color:var(--dim)}
+
+.console{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(400px,calc(100vw - 28px));z-index:25;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.console .boxh button{background:none;border:0;color:var(--grey);font-size:12px;padding:0}
+.clog{height:140px;overflow-y:auto;padding:8px 10px;font-size:12.5px}
+.clog div{white-space:pre-wrap;word-break:break-word}
+.clog .in{color:var(--fg)}
+.clog .in::before{content:"> ";color:var(--green)}
+.clog .out{color:var(--grey)}
+.clog .out::before{content:"< ";color:var(--dim)}
+.console form{display:flex;border-top:1px solid var(--rule);padding:6px 10px;gap:6px}
+.console form span{color:var(--green)}
+.console input{all:unset;flex:1;font-family:var(--mono);font-size:12.5px;color:var(--fg)}
+.console.min .clog,.console.min form{display:none}
+
+.modal{position:fixed;inset:0;background:rgba(2,5,3,.78);z-index:40;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal .box{width:min(440px,100%)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--green);color:#04140a;padding:8px 14px;font-weight:600;z-index:50;font-size:12.5px}
+footer.foot{border-top:1px solid var(--rule);margin-top:48px;padding-top:14px;display:flex;gap:18px;flex-wrap:wrap;color:var(--grey);font-size:11.5px}
+
+@media (max-width:1100px){
+  .hero{grid-template-columns:1fr}
+  .heroR{min-height:480px}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .step{border-bottom:1px solid var(--rule)}
+  .pane{grid-template-columns:1fr}
+  .tiers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tier{border-bottom:1px solid var(--rule)}
+}
+@media (max-width:820px){
+  .shell{grid-template-columns:1fr}
+  .rail{border-right:0;border-bottom:1px solid var(--rule);padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .flow{grid-template-columns:1fr}
+  .slotCard{display:none}
+}
+@media (max-width:520px){
+  .standgrid{grid-template-columns:1fr}
+  .standart{border-right:0;border-bottom:1px solid var(--rule);min-height:160px}
+  .steps,.tiers{grid-template-columns:1fr}
+  .navr .pill{display:none}
+  .heroR{min-height:420px}
+  .grid2{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.view.on{animation:none}}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="navin">
+    <a class="brand" href="#home" aria-label="OpenDoor home">
+      <svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><rect x="1" y="1" width="18" height="20" fill="none" stroke="#5fe08e" stroke-width="2"/><path d="M5 21V5h8l2 2v14" fill="#123b24" stroke="#5fe08e" stroke-width="1.5"/><rect x="11" y="12" width="2" height="2" fill="#5fe08e"/></svg>
+      opendoor <small>$DOOR</small>
+    </a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#home">Home</a>
+      <a href="#line">Line</a>
+      <a href="#sell">Sell</a>
+      <a href="#buy">Buy</a>
+      <a href="#token">$DOOR</a>
+      <a href="#how">How it works</a>
+    </nav>
+    <div class="navr">
+      <span class="pill" id="placePill"><i></i><span>no place held</span></span>
+      <button class="btn ghost" id="tourBtn">Walkthrough</button>
+      <a class="btn xbtn" href="https://x.com/OpenDoorSol" target="_blank" rel="noopener" aria-label="OpenDoor on X"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.9-6.4L6.3 22H3.2l7.3-8.3L1 2h6.3l4.4 5.9L18.9 2Zm-1.1 18.1h1.7L6.3 3.8H4.5l13.3 16.3Z"/></svg> Follow</a>
+      <button class="btn" id="walletBtn">Connect wallet</button>
+    </div>
+  </div>
+  <div class="strip tn">
+    <span>opendoor <b class="g">● pre-launch</b></span>
+    <span>network <b>Solana</b></span>
+    <span>paid in <b>SOL</b></span>
+    <span>door fee <b>0.30% of a sale</b></span>
+    <span>knocks <b id="sKnock">0</b></span>
+    <span>clock <b id="sClock">–</b></span>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="rail" aria-label="OpenDoor status">
+    <div class="box">
+      <div class="boxh"><b>door.status()</b></div>
+      <div class="boxb tn">
+        <div class="kv"><span>program</span><span class="g">pre-launch</span></div>
+        <div class="kv"><span>network</span><span>Solana</span></div>
+        <div class="kv"><span>pays out in</span><span>SOL</span></div>
+        <div class="kv"><span>door fee</span><span>0.30%</span></div>
+        <div class="kv"><span>to holders</span><span>60%</span></div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="boxh"><b>your place</b></div>
+      <div class="boxb tn" id="railPlace"><p class="legend">None yet. Press Stand to preview one.</p></div>
+    </div>
+    <div class="box">
+      <div class="boxh"><b>your log</b><span class="r tn" id="logCount">0</span></div>
+      <div class="boxb log tn" id="ulog"><p class="legend">Stand, price or knock and it shows up here.</p></div>
+    </div>
+  </aside>
+
+  <main class="stage">
+
+    <section class="view" id="v-home" aria-label="Home">
+      <div class="hero">
+        <div class="heroL">
+          <h1>The door is open.<br><span class="g">Until it isn't.</span></h1>
+          <p class="lede">When a SOL lending vault lends out every loose coin, withdrawals stop and a line forms behind the door. OpenDoor turns your spot in that line into something you hold. Sell it for SOL right now, or keep it and the vault pays you when your turn comes.</p>
+
+          <div class="stand box">
+            <div class="boxh"><b>door.stand()</b><span class="r">preview</span></div>
+            <div class="standgrid">
+              <div class="standart"><canvas id="miniCanvas" aria-hidden="true"></canvas></div>
+              <div class="standform">
+                <label class="lbl" for="hsShares">SOL to file</label>
+                <div class="inp"><input id="hsShares" inputmode="decimal" value="25"><span>SOL</span></div>
+                <div class="kv tn"><span>your place</span><span id="hsPlace">1st</span></div>
+                <div class="kv tn"><span>ahead of you</span><span id="hsAhead">0 SOL</span></div>
+                <div class="kv tn"><span>sell now at 0.25% off</span><span id="hsSell" class="g">–</span></div>
+                <button class="btn solid cta" data-act="stand">Stand at the door</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a class="btn" href="#buy">Buy a place</a>
+            <a class="btn ghost" href="#token">What $DOOR does →</a>
+          </div>
+        </div>
+
+        <div class="heroR" id="heroR">
+          <canvas id="doorCanvas" aria-label="Dot-matrix scene: a corridor ending in a heavy door left ajar, green light spilling under it, and a line of people waiting behind velvet ropes"></canvas>
+          <div class="float slotCard box" id="slotCard">
+            <div class="boxh"><b>door.slot()</b></div>
+            <div class="boxb"><p>Green at the slot means the vault is paying. When it goes dark, the line starts.</p></div>
+          </div>
+          <div class="float lineCard box">
+            <div class="boxh"><b>door.line()</b><span class="r">scene</span></div>
+            <div class="boxb tn">
+              <div class="kv"><span>you</span><span class="g" id="scYou">–</span></div>
+              <div class="kv"><span>people ahead</span><span id="scAhead">–</span></div>
+              <div class="kv"><span>place held by</span><span>you</span></div>
+            </div>
+          </div>
+          <div class="float knock"><button class="btn" id="knockBtn">Knock on the door</button></div>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="n">01 / the reserve</div><h3>The SOL is in there.</h3><p>A lending vault lends what you deposit. When everyone wants SOL at once, your balance is still yours and the loose SOL is gone.</p></div>
+        <div class="step"><div class="n">02 / the line</div><h3>Then you wait.</h3><p>Every withdrawal that can't be paid joins a first-in, first-out line. It moves as borrowers repay.</p></div>
+        <div class="step"><div class="n">03 / the door</div><h3>Stand through the door.</h3><p>Same line, same wait. Your ticket sits in a program account and the place sits on a ledger, so it can change hands.</p></div>
+        <div class="step"><div class="n">04 / the exit</div><h3>Sell it, or keep it.</h3><p>Put a discount on your place. A buyer pays you SOL in one transaction and takes over the wait. No buyer, no loss.</p></div>
+        <div class="step"><div class="n">05 / the token</div><h3>$DOOR takes a cut.</h3><p>Each place that sells pays a small door fee. Most of it goes back to $DOOR holders.</p></div>
+      </div>
+
+    </section>
+
+    <section class="view" id="v-line" aria-label="Line">
+      <div class="vhead">
+        <h2>Next in line.</h2>
+        <p id="lnLede">Set how many people are ahead of you and how fast the line moves, then drag the clock.</p>
+      </div>
+      <div class="pane">
+        <div class="box">
+          <div class="boxh"><b>queue</b><span class="r">drag to run the line</span></div>
+          <canvas id="lineCanvas" class="scene" aria-label="Side view of the line moving toward the door"></canvas>
+          <div class="boxb">
+            <label class="lbl" for="lnClock">hours from now: <span id="lnClockV" class="tn">0</span>h</label>
+            <input type="range" id="lnClock" class="range" min="0" max="12" step="0.25" value="0">
+            <p class="note">This is a model you set, not a reading. Real lines pay in lumps when loans settle.</p>
+          </div>
+        </div>
+        <div class="col">
+          <div class="box">
+            <div class="boxh"><b>your ticket</b></div>
+            <div class="boxb">
+              <label class="lbl" for="lnShares">SOL you file</label>
+              <div class="inp"><input id="lnShares" inputmode="decimal" value="25"><span>SOL</span></div>
+              <div class="chips" style="margin-bottom:12px">
+                <button class="chip" data-sz="5">5</button><button class="chip on" data-sz="25">25</button><button class="chip" data-sz="100">100</button><button class="chip" data-sz="500">500</button>
+              </div>
+              <div class="grid2">
+                <div><label class="lbl" for="lnAheadIn">people ahead</label><div class="inp sm"><input id="lnAheadIn" inputmode="numeric" value="4"></div></div>
+                <div><label class="lbl" for="lnPerIn">hours each</label><div class="inp sm"><input id="lnPerIn" inputmode="decimal" value="1"><span>h</span></div></div>
+              </div>
+              <div class="kv tn"><span>your place</span><span id="lnPlace">–</span></div>
+              <div class="kv tn"><span>estimated wait</span><span id="lnWait">–</span></div>
+              <div class="kv tn"><span>the vault will owe you</span><span id="lnOwed">–</span></div>
+              <div class="sep"></div>
+              <p class="note" style="margin:0">A ticket filed straight with the vault can't be sold. One filed through the door can.</p>
+            </div>
+          </div>
+          <div class="callout">
+            <div class="kv"><span>takes from anyone</span><span class="tn">0 SOL</span></div>
+            <div class="kv tn"><span>your place</span><span class="bigv" id="lnPlace2">–</span></div>
+            <button class="btn solid cta" data-act="stand">door.stand()</button>
+            <p class="note">Standing locks about 0.017 SOL of rent for a moment. Most of it returns when the place closes.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="v-sell" aria-label="Sell">
+      <div class="vhead">
+        <h2><span class="g tn" id="slHead">–</span> now.</h2>
+        <p id="slLede"></p>
+      </div>
+      <div class="pane">
+        <div class="box">
+          <div class="boxh"><b>door.open()</b><span class="r">set a price</span></div>
+          <div class="boxb">
+            <label class="lbl" for="slDisc">discount under what the vault owes: <span class="tn" id="slDiscV">0.25%</span></label>
+            <input type="range" id="slDisc" class="range" min="1" max="300" step="1" value="25">
+            <div class="chips" style="margin:8px 0 18px">
+              <button class="chip" data-d="5">0.05%</button><button class="chip" data-d="10">0.10%</button><button class="chip on" data-d="25">0.25%</button><button class="chip" data-d="50">0.50%</button><button class="chip" data-d="100">1.00%</button>
+            </div>
+            <p class="lbl">now or later</p>
+            <div class="bars tn">
+              <div class="barrow"><span class="muted">buyer pays now</span><span class="track"><span class="fill" id="barNow"></span></span><span id="barNowV">–</span></div>
+              <div class="barrow"><span class="muted">vault pays later</span><span class="track"><span class="fill grey" id="barLater"></span></span><span id="barLaterV">–</span></div>
+            </div>
+            <p class="note">The price is never a fixed number. At the moment of sale the program values what the vault owes and takes your discount off.</p>
+          </div>
+        </div>
+        <div class="col">
+          <div class="box">
+            <div class="boxh"><b>your place</b></div>
+            <div class="boxb tn">
+              <label class="lbl" for="slAmt">SOL the vault owes you</label>
+              <div class="inp sm"><input id="slAmt" inputmode="decimal" value="25"><span>SOL</span></div>
+              <div class="kv"><span>a buyer pays you</span><span id="slNow" class="g">–</span></div>
+              <div class="kv"><span>the vault pays, in turn</span><span id="slLater">–</span></div>
+              <div class="kv"><span>you give up</span><span id="slGive">–</span></div>
+              <div class="kv"><span>door fee (0.30%)</span><span id="slFee">–</span></div>
+              <div class="kv"><span>after $DOOR tier</span><span id="slFeeD">–</span></div>
+            </div>
+          </div>
+          <div class="callout">
+            <div class="kv"><span>if it sells</span><span class="bigv tn" id="slBig">–</span></div>
+            <button class="btn solid cta" data-act="list">door.open(<span id="slBps">25</span>)</button>
+            <p class="note">You need a place before you can price it. Change the discount any time, or take it down for free.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="v-buy" aria-label="Buy">
+      <div class="vhead">
+        <h2>Nothing on the wall.</h2>
+        <p>Places go on sale when a vault stops paying and a line forms. Each lit pane would be a place someone has priced. Buy one at a discount and the vault pays you in full when the line reaches it.</p>
+      </div>
+      <div class="pane">
+        <div class="box">
+          <div class="boxh"><b>door.wall()</b><span>front to back</span></div>
+          <div class="wall" id="wall"></div>
+          <div class="tw"><table><thead><tr><th>place</th><th>ahead</th><th>owed</th><th>price</th><th>off</th><th>wait</th></tr></thead><tbody><tr><td class="empty" colspan="6">Nothing is listed yet.</td></tr></tbody></table></div>
+        </div>
+        <div class="col">
+          <div class="box">
+            <div class="boxh"><b>if a place stood here</b><span class="r">calculator</span></div>
+            <div class="boxb tn">
+              <div class="grid2">
+                <div><label class="lbl" for="byOw">owed</label><div class="inp sm"><input id="byOw" inputmode="decimal" value="40"><span>SOL</span></div></div>
+                <div><label class="lbl" for="byD">discount</label><div class="inp sm"><input id="byD" inputmode="decimal" value="0.30"><span>%</span></div></div>
+              </div>
+              <label class="lbl" for="byW">expected wait</label>
+              <div class="inp sm"><input id="byW" inputmode="decimal" value="6"><span>h</span></div>
+              <div class="kv"><span>you pay</span><span id="byPay">–</span></div>
+              <div class="kv"><span>the vault pays the holder</span><span id="byOwed">–</span></div>
+              <div class="kv"><span>you make</span><span id="byMake" class="g">–</span></div>
+              <div class="kv"><span>a year, if every round fills</span><span id="byApr">–</span></div>
+            </div>
+          </div>
+          <div class="box">
+            <div class="boxh"><b>watch the door</b></div>
+            <div class="boxb">
+              <label class="lbl" for="alertD">tell me when a place lists at or above</label>
+              <div class="inp sm"><input id="alertD" inputmode="decimal" value="0.40"><span>% off</span></div>
+              <button class="btn" style="width:100%" id="alertBtn">Set alert</button>
+              <p class="note" id="alertNote">Keyholder tier and up hear about new places first.</p>
+            </div>
+          </div>
+          <div class="callout">
+            <div class="kv"><span>listed</span><span class="bigv tn">0</span></div>
+            <a class="btn solid cta" href="#line">Stand in line instead</a>
+            <p class="note">Places only come through the door. Tickets filed straight with a vault can't be bought.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="v-token" aria-label="$DOOR token">
+      <div class="vhead">
+        <h2>$DOOR is the <span class="g">doorman.</span></h2>
+        <p>Every place that sells through the door pays a 0.30% fee in SOL. That fee is split three ways, and holding $DOOR lowers what you pay and raises what you get back.</p>
+      </div>
+      <div class="flow">
+        <div class="box"><div class="boxh"><b>60%</b> holders</div><div class="boxb">Sent to $DOOR holders pro rata each epoch, paid in SOL.</div></div>
+        <div class="box"><div class="boxh"><b>25%</b> buyback</div><div class="boxb">Buys $DOOR off the market and burns it.</div></div>
+        <div class="box"><div class="boxh"><b>15%</b> rent desk</div><div class="boxb">Covers rent for first-time standers so a new place costs nothing upfront.</div></div>
+      </div>
+      <h3 style="margin:28px 0 12px">Key tiers</h3>
+      <div class="tiers">
+        <div class="tier" data-min="0"><span class="lbl">0 $DOOR</span><h3>Visitor</h3><span class="tn">fee 0.30%</span><ul><li>Stand, sell and buy</li><li>Public wall</li></ul></div>
+        <div class="tier" data-min="100000"><span class="lbl">100K $DOOR</span><h3>Tenant</h3><span class="tn">fee 0.20%</span><ul><li>Share of fee split</li><li>Console history</li></ul></div>
+        <div class="tier" data-min="1000000"><span class="lbl">1M $DOOR</span><h3>Keyholder</h3><span class="tn">fee 0.10%</span><ul><li>First word on new places</li><li>Bulk stand</li></ul></div>
+        <div class="tier" data-min="5000000"><span class="lbl">5M $DOOR</span><h3>Landlord</h3><span class="tn">fee 0%</span><ul><li>No fee on sales</li><li>Vote on new vaults</li></ul></div>
+      </div>
+      <div class="pane" style="margin-top:20px">
+        <div class="box">
+          <div class="boxh"><b>holder.estimate()</b><span class="r">you set the inputs</span></div>
+          <div class="boxb">
+            <label class="lbl" for="tkHold">your $DOOR: <span class="tn" id="tkHoldV">1,000,000</span></label>
+            <input type="range" id="tkHold" class="range" min="0" max="10000000" step="50000" value="1000000">
+            <label class="lbl" for="tkVol" style="margin-top:12px">weekly SOL sold through the door: <span class="tn" id="tkVolV">20,000 SOL</span></label>
+            <input type="range" id="tkVol" class="range" min="1000" max="200000" step="1000" value="20000">
+            <p class="note">Assumes 1B supply with every holder in the split. Volume only exists when vault lines form.</p>
+          </div>
+        </div>
+        <div class="callout tn">
+          <div class="kv"><span>your tier</span><span id="tkTier">–</span></div>
+          <div class="kv"><span>your fee on sales</span><span id="tkFee">–</span></div>
+          <div class="kv"><span>share of holder pool</span><span id="tkShare">–</span></div>
+          <div class="kv"><span>SOL to you per week</span><span class="bigv" id="tkWeek">–</span></div>
+        </div>
+      </div>
+      <div class="ca" style="margin-top:20px"><span class="lbl" style="margin:0">CA</span><span class="muted">The CA is posted on X at <a href="https://x.com/OpenDoorSol" target="_blank" rel="noopener" class="g">@OpenDoorSol</a>. Anything else claiming to be $DOOR is not us.</span></div>
+    </section>
+
+    <section class="view" id="v-how" aria-label="How it works">
+      <div class="vhead">
+        <h2>Your place stays in line.<br><span class="g">You don't have to.</span></h2>
+        <p>Follow one place from start to finish. Press a step to see who holds it and who gets paid.</p>
+      </div>
+      <div class="box">
+        <div class="boxh"><b>place.life()</b><span class="r" id="lifeCap">stand</span></div>
+        <div class="boxb">
+          <div class="life" id="lifeBtns">
+            <button class="chip on" data-s="0">Stand</button><button class="chip" data-s="1">Open</button><button class="chip" data-s="2">Buy</button><button class="chip" data-s="3">Wait</button><button class="chip" data-s="4">Collect</button><button class="chip" data-s="-1">loop</button>
+          </div>
+          <canvas id="lifeCanvas" class="scene" aria-label="Side view of one place's life in the line"></canvas>
+          <p class="note" id="lifeText"></p>
+        </div>
+        <pre class="code"><span class="c">// open.rs: the price is a discount off what the vault owes, never a fixed number</span>
+<span class="k">pub fn</span> discounted_pay(owed_lamports: u64, discount_bps: u16) -> Result&lt;u64&gt; {
+    require!((1..=9_999).contains(&amp;discount_bps), DoorError::InvalidDiscount);
+    <span class="k">let</span> factor = 10_000u128 - u128::from(discount_bps);
+    <span class="k">let</span> pay = u128::from(owed_lamports) * factor / 10_000;
+    u64::try_from(pay).map_err(|_| error!(DoorError::Overflow))
+}</pre>
+      </div>
+      <div class="faq" style="margin-top:22px">
+        <details open><summary>What is the line, exactly?</summary><p>SOL lending reserves lend out deposits. When every loose SOL is lent, there is nothing to pay a withdrawal with, so the reserve files it as a ticket in a first-in, first-out queue. Tickets get paid as borrowers repay or liquidations land.</p></details>
+        <details><summary>Why can't I just sell my ticket?</summary><p>A ticket filed straight with the vault belongs to that wallet until it is paid. OpenDoor files the ticket from a program account made for one place, and keeps who holds that place on its own ledger. That is what lets the place change hands.</p></details>
+        <details><summary>What does standing cost?</summary><p>About 0.017 SOL of rent for a moment, for the place account, its token account and the ticket. Most of it comes back to the wallet that stood when the place closes, even if the place was sold. First-time standers can get it covered by the rent desk.</p></details>
+        <details><summary>What if nobody buys my place?</summary><p>Nothing is lost. You stay in line and the vault pays you in full when the line reaches you. The door fee only applies to a sale.</p></details>
+        <details><summary>Where does $DOOR come in?</summary><p>The 0.30% door fee on every sale is split between holders, buybacks and the rent desk. Holding more $DOOR lowers your own fee, down to zero at the Landlord tier.</p></details>
+        <details><summary>Is this live?</summary><p>Not yet. The program goes live with the token, and the CA is posted on X at @OpenDoorSol. Until then the calculators on this site run on numbers you type in.</p></details>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>opendoor · $DOOR · Solana</span>
+      <span>CA is posted on X</span>
+      <a href="#how">How it works</a>
+      <a class="btn xbtn" href="https://x.com/OpenDoorSol" target="_blank" rel="noopener" style="margin-left:auto"><svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.9-6.4L6.3 22H3.2l7.3-8.3L1 2h6.3l4.4 5.9L18.9 2Zm-1.1 18.1h1.7L6.3 3.8H4.5l13.3 16.3Z"/></svg> @OpenDoorSol</a>
+    </footer>
+  </main>
+</div>
+
+<div class="console box min" id="console">
+  <div class="boxh"><b>console</b><span>type help</span><span class="r"><button id="conMin" aria-label="Open or minimize console">▢</button></span></div>
+  <div class="clog tn" id="clog" aria-live="polite"></div>
+  <form id="conForm"><span>&gt;</span><input id="conIn" autocomplete="off" spellcheck="false" placeholder="type help" aria-label="Console command"></form>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="boxh"><b id="mTitle">walkthrough</b><span class="r"><button class="btn ghost" id="mClose" style="padding:0 4px">close</button></span></div>
+    <div class="boxb" id="mBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const ord=n=>{const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])};
+const num=(v,def)=>{const n=parseFloat(String(v).replace(/,/g,''));return isFinite(n)&&n>=0?n:def};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), smooth=x=>x*x*(3-2*x), lerp=(a,b,u)=>a+(b-a)*u;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* =========================================================
+   Dot-matrix engine: draw a scene into a low-res buffer,
+   then re-draw it as ordered-dithered dots on screen.
+   Grey pixels become grey dots; green pixels become green dots.
+   ========================================================= */
+const LV_N=['','#18201b','#384740','#748a7c','#c4d6c9'];
+const LV_G=['','#0d3a21','#1c7040','#41c776','#9af7bd'];
+const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+function dither(ctx,o,cols,rows,cell){
+  const d=o.getImageData(0,0,cols,rows).data, P={}, sz=cell>3?cell-1:cell-.5;
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+    const i=(y*cols+x)*4, r=d[i], g=d[i+1], b=d[i+2];
+    const acc=g>r*1.35+8;
+    const L=(acc?g:(r+g+b)/3)/255*4;
+    let lv=Math.floor(L); if(L-lv>(BAYER[(y&3)*4+(x&3)]+.5)/16) lv++;
+    if(lv<=0) continue; if(lv>4) lv=4;
+    const k=(acc?'g':'n')+lv; (P[k]||(P[k]=new Path2D())).rect(x*cell,y*cell,sz,sz);
+  }
+  for(const k in P){ctx.fillStyle=(k[0]==='g'?LV_G:LV_N)[+k[1]];ctx.fill(P[k])}
+}
+class Stage{
+  constructor(cv,cell){this.cv=cv;this.base=cell;this.off=document.createElement('canvas');this.o=this.off.getContext('2d',{willReadFrequently:true});this.ok=false}
+  resize(){
+    const r=this.cv.getBoundingClientRect(); if(!r.width||!r.height){this.ok=false;return}
+    const dpr=Math.min(2,devicePixelRatio||1);
+    this.cv.width=Math.round(r.width*dpr); this.cv.height=Math.round(r.height*dpr);
+    this.ctx=this.cv.getContext('2d'); this.ctx.setTransform(dpr,0,0,dpr,0,0);
+    this.w=r.width; this.h=r.height; this.cell=typeof this.base==='function'?this.base(r.width):this.base;
+    this.cols=Math.ceil(r.width/this.cell); this.rows=Math.ceil(r.height/this.cell);
+    this.off.width=this.cols; this.off.height=this.rows; this.ok=true;
+  }
+  render(fn,t,overlay){
+    if(!this.ok) return; const o=this.o;
+    o.setTransform(1,0,0,1,0,0); o.globalAlpha=1; o.globalCompositeOperation='source-over'; o.imageSmoothingEnabled=false;
+    o.fillStyle='#000'; o.fillRect(0,0,this.cols,this.rows);
+    const geo=fn(o,this.cols,this.rows,t)||{};
+    this.ctx.fillStyle='#060907'; this.ctx.fillRect(0,0,this.w,this.h);
+    dither(this.ctx,o,this.cols,this.rows,this.cell);
+    if(overlay) overlay(this.ctx,geo,this.cell,this.w,this.h);
+  }
+}
+
+/* ---------- drawing helpers (low-res space) ---------- */
+function poly(o,pts,fill){o.beginPath();o.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)o.lineTo(pts[i][0],pts[i][1]);o.closePath();o.fillStyle=fill;o.fill()}
+function rect(o,x,y,w,h,c){o.fillStyle=c;o.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+function line(o,x1,y1,x2,y2,c){o.strokeStyle=c;o.lineWidth=1;o.beginPath();o.moveTo(x1+.5,y1+.5);o.lineTo(x2+.5,y2+.5);o.stroke()}
+const grey=v=>`rgb(${v},${v},${v})`;
+const GRN=(a=1)=>`rgba(40,235,110,${a})`, GRN2=(a=1)=>`rgba(20,150,70,${a})`;
+const FONT={O:['111','101','101','101','111'],P:['111','101','111','100','100'],E:['111','100','110','100','111'],N:['101','111','111','111','101'],D:['110','101','101','101','110'],R:['110','101','110','101','101'],S:['111','100','111','001','111'],L:['100','100','100','100','111'],'0':['111','101','101','101','111'],'1':['010','110','010','010','111'],'$':['111','110','111','011','111']};
+function ptext(o,s,x,y,c){o.fillStyle=c;[...s].forEach((ch,i)=>{const g=FONT[ch];if(!g)return;g.forEach((row,ry)=>[...row].forEach((b,rx)=>{if(b==='1')o.fillRect(Math.round(x)+i*4+rx,Math.round(y)+ry,1,1)}))})}
+
+/* ---------- people sprites (9 x 18) ---------- */
+const SPR={
+ A:['...hhh...','..hhhhh..','..hssss..','..sssss..','...sss...','..ccgcc..','.cccgccc.','.cccgccc.','cc.ccc.cc','cc.ccc.cc','s..ccc..s','...ccc...','...ddd...','...d.d...','...d.d...','...d.d...','..dd.dd..','.........'],
+ B:['..ddddd..','.ddddddd.','..sssss..','..sssss..','...sss...','..lllll..','.lllllll.','.l.lll.l.','.l.lll.l.','.s.lll.gg','...lll.gg','...ccc...','...ccc...','...c.c...','...c.c...','...c.c...','..dd.dd..','.........'],
+ C:['...lll...','..lllll..','..sssss..','..sssss..','...sss...','.dccccc..','ddcccccc.','ddcccccc.','ddccccc.c','dd.cccc.c','...cccc.s','...cccc..','...cccc..','...d..d..','...d..d..','...d..d..','..dd..dd.','.........'],
+ D:['...hhh...','..hhhhh..','.hhsssh..','.hsssssh.','.h.sss.h.','..lcccl..','.lcccccl.','.lcccccl.','ll.ccc.ll','s..ccc..s','..ccccc..','.ccccccc.','...d.d...','...d.d...','...d.d...','...d.d...','..dd.dd..','.........']
+};
+const WALK=['..d..d...','..d...d..','.d....d..','.dd...dd.'];
+const PAL={h:grey(120),s:grey(240),c:grey(176),d:grey(110),l:grey(220),g:'rgb(10,200,80)'};
+const YOU={h:'rgb(10,170,70)',s:grey(245),c:'rgb(40,250,120)',d:'rgb(15,150,70)',l:'rgb(120,255,170)',g:grey(255)};
+function sprite(rows,pal){const c=document.createElement('canvas');c.width=9;c.height=18;const x=c.getContext('2d');rows.forEach((r,y)=>[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=pal[ch];x.fillRect(i,y,1,1)}}));return c}
+const SPRITES={};
+Object.keys(SPR).forEach(k=>{const walk=SPR[k].slice(0,13).concat(WALK,['.........']);SPRITES[k]=[sprite(SPR[k],PAL),sprite(walk,PAL)];SPRITES[k+'Y']=[sprite(SPR[k],YOU),sprite(walk,YOU)]});
+const VAR=['A','B','D','C'];
+function person(o,key,cx,feetY,h,walking,alpha){const s=SPRITES[key][walking?1:0];const H=Math.max(6,Math.round(h)),W=Math.max(3,Math.round(H/2));o.globalAlpha=alpha==null?1:alpha;o.drawImage(s,Math.round(cx-W/2),Math.round(feetY-H),W,H);o.globalAlpha=1}
+
+/* ---------- reusable side-view door (for mini, line, life) ---------- */
+function sideDoor(o,dx,top,floor,dw,glow,t){
+  const dh=floor-top;
+  rect(o,dx-2,top-2,dw+4,dh+2,grey(150));
+  rect(o,dx-2,top-2,dw+4,1,grey(215)); rect(o,dx-2,top-2,1,dh+2,grey(200));
+  rect(o,dx+dw+1,top-2,1,dh+2,grey(80));
+  rect(o,dx,top,dw,dh,grey(70));
+  rect(o,dx+2,top,dw-2,dh,grey(118));
+  const pw=dw-6, ph=Math.max(3,(dh-10)/2);
+  [0,1].forEach(r=>{const py=top+4+r*(ph+2);rect(o,dx+4,py,pw,ph,grey(92));rect(o,dx+4,py,pw,1,grey(60));rect(o,dx+4,py,1,ph,grey(60));rect(o,dx+4,py+ph-1,pw,1,grey(170));rect(o,dx+3+pw,py,1,ph,grey(170))});
+  rect(o,dx+dw-4,top+dh*.52,3,1,grey(235)); rect(o,dx+dw-3,top+dh*.48,1,3,grey(200));
+  // the slot
+  rect(o,dx+4,top+1,pw,2,GRN(.55+.45*glow));
+  // crack of light on the hinge side
+  rect(o,dx+1,top,1,dh,GRN(.6+.4*glow));
+  // spill on the floor
+  const g=o.createLinearGradient(0,floor,0,floor+8);g.addColorStop(0,GRN(.7*glow+.2));g.addColorStop(1,GRN(0));
+  poly(o,[[dx,floor],[dx+dw,floor],[dx+dw+10,floor+8],[dx-14,floor+8]],g);
+}
+function sideRoom(o,W,H,floor){
+  let g=o.createLinearGradient(0,0,0,floor);g.addColorStop(0,grey(14));g.addColorStop(1,grey(44));
+  o.fillStyle=g;o.fillRect(0,0,W,floor);
+  for(let y=4,r=0;y<floor-2;y+=4,r++)for(let x=(r%2)*4;x<W;x+=8)rect(o,x,y,7,3,grey(r%3?40:48));
+  rect(o,0,floor-3,W,2,grey(70)); rect(o,0,floor-1,W,1,grey(110));
+  g=o.createLinearGradient(0,floor,0,H);g.addColorStop(0,grey(64));g.addColorStop(1,grey(22));
+  o.fillStyle=g;o.fillRect(0,floor,W,H-floor);
+  for(let x=0;x<W;x+=12)line(o,x,floor,x-6,H,grey(34));
+}
+function post(o,x,floor,h){rect(o,x-1,floor-h,2,h,grey(190));rect(o,x-2,floor-h-1,4,2,grey(245));rect(o,x-2,floor-1,4,1,grey(150))}
+function rope(o,x1,x2,y){o.strokeStyle=GRN2(1);o.lineWidth=1;o.beginPath();o.moveTo(x1,y);o.quadraticCurveTo((x1+x2)/2,y+3,x2,y);o.stroke()}
+
+/* =========================================================
+   HERO: perspective corridor, heavy door left ajar, a roped line.
+   ========================================================= */
+const hero=new Stage($('#doorCanvas'),w=>w<560?3:4);
+const Q=5, CYCLE=5200;
+function heroGeo(W,H){
+  const vx=W*.5, vy=H*.37, bw=W*.5, bh=H*.6, bx=vx-bw/2, by=vy-bh*.55, bb=by+bh, br=bx+bw;
+  const dw=bw*.46, dh=bh*.78, dx=vx-dw/2-bw*.03, dy=bb-dh;
+  return {vx,vy,bw,bh,bx,by,bb,br,dw,dh,dx,dy,P0:[W*.2,H*.995],P1:[dx+dw*.42,bb+1]};
+}
+function heroScene(o,W,H,t){
+  const G=heroGeo(W,H), {vx,bx,by,bb,br,bw,bh,dw,dh,dx,dy}=G;
+  const pulse=reduce?.8:.65+.35*Math.sin(t/900)+.08*Math.sin(t/137);
+  // ceiling
+  poly(o,[[0,0],[W,0],[br,by],[bx,by]],grey(12));
+  for(let i=1;i<6;i++){const f=i/6;line(o,lerp(0,bx,f),lerp(0,by,f),lerp(W,br,f),lerp(0,by,f),grey(26))}
+  // floor
+  let g=o.createLinearGradient(0,bb,0,H);g.addColorStop(0,grey(26));g.addColorStop(1,grey(70));
+  poly(o,[[0,H],[W,H],[br,bb],[bx,bb]],g);
+  o.save();o.beginPath();o.moveTo(0,H);o.lineTo(W,H);o.lineTo(br,bb);o.lineTo(bx,bb);o.closePath();o.clip();
+  for(let i=-10;i<=10;i++)line(o,vx+i*bw/14,bb,vx+i*W/6,H,grey(46));
+  for(let k=1;k<9;k++){const y=bb+(H-bb)*(1-Math.pow(.72,k));line(o,0,y,W,y,grey(44))}
+  o.restore();
+  // left wall
+  g=o.createLinearGradient(0,0,bx,0);g.addColorStop(0,grey(84));g.addColorStop(1,grey(38));
+  poly(o,[[0,0],[bx,by],[bx,bb],[0,H]],g);
+  for(let i=1;i<7;i++){const f=i/7;line(o,0,H*f,bx,by+bh*f,grey(60))}
+  for(let k=1;k<6;k++){const xk=bx*(1-Math.pow(.62,k));line(o,xk,by*(xk/bx),xk,H+(bb-H)*(xk/bx),grey(30))}
+  // pipe along the left wall, with brackets and a valve
+  const pf=.1; for(let d=0;d<2;d++) line(o,0,H*pf+d,bx,by+bh*pf+d,grey(d?110:190));
+  for(let k=1;k<5;k++){const xk=bx*(1-Math.pow(.6,k)),yk=lerp(H*pf,by+bh*pf,xk/bx);rect(o,xk,yk-1,1,4,grey(140))}
+  { const xv=bx*.35, yv=lerp(H*pf,by+bh*pf,.35); rect(o,xv-2,yv-3,5,2,grey(220)); rect(o,xv,yv-2,1,3,grey(200)); }
+  // poster frame on left wall with a $DOOR mark
+  { const x1=bx*.42,x2=bx*.62; const t1=lerp(H*.3,by+bh*.3,.42),t2=lerp(H*.3,by+bh*.3,.62),b1=lerp(H*.58,by+bh*.58,.42),b2=lerp(H*.58,by+bh*.58,.62);
+    poly(o,[[x1,t1],[x2,t2],[x2,b2],[x1,b1]],grey(26)); line(o,x1,t1,x2,t2,grey(150)); line(o,x1,b1,x2,b2,grey(90)); line(o,x1,t1,x1,b1,grey(150)); line(o,x2,t2,x2,b2,grey(90));
+    ptext(o,'$',x1+(x2-x1)*.3,(t1+b1)/2-2,GRN(.8)); }
+  // right wall
+  g=o.createLinearGradient(W,0,br,0);g.addColorStop(0,grey(60));g.addColorStop(1,grey(32));
+  poly(o,[[W,0],[br,by],[br,bb],[W,H]],g);
+  for(let i=1;i<7;i++){const f=i/7;line(o,W,H*f,br,by+bh*f,grey(46))}
+  // fuse box with blinking LEDs on the right wall
+  { const u=.45, x1=lerp(W,br,u), y1=lerp(H*.36,by+bh*.36,u), x2=lerp(W,br,.62), y2=lerp(H*.36,by+bh*.36,.62);
+    const h1=(H-0)*.16*(1-u*.6), h2=h1*.8;
+    poly(o,[[x1,y1],[x2,y2],[x2,y2+h2],[x1,y1+h1]],grey(96)); line(o,x1,y1,x2,y2,grey(180));
+    for(let k=0;k<3;k++){const on=reduce||((Math.floor(t/400)+k)%3!==0);rect(o,lerp(x1,x2,.3+k*.18),lerp(y1,y2,.3+k*.18)+h1*.35,1,1,on?GRN(1):grey(40))}
+    line(o,(x1+x2)/2,y1+h1,(x1+x2)/2+2,H*.95,grey(70)); }
+  // back wall + brick
+  rect(o,bx,by,bw,bh,grey(36));
+  for(let y=by+2,r=0;y<bb-1;y+=3,r++)for(let x=bx+(r%2?3:0);x<br-3;x+=6)rect(o,x,y,5,2,grey((r*7+x)%5?46:54));
+  // door frame (heavy, beveled)
+  rect(o,dx-5,dy-5,dw+10,dh+5,grey(120));
+  rect(o,dx-5,dy-5,dw+10,1,grey(225)); rect(o,dx-5,dy-5,1,dh+5,grey(200));
+  rect(o,dx+dw+4,dy-5,1,dh+5,grey(64)); rect(o,dx-4,dy-4,dw+8,1,grey(160));
+  rect(o,dx-1,dy-1,dw+2,dh+1,grey(40));
+  // light behind the door (seen through the gap)
+  rect(o,dx+dw-3,dy,3,dh,GRN(.75*pulse));
+  // door slab, opened slightly toward us on its left hinges: right edge drawn a bit inset
+  g=o.createLinearGradient(dx,0,dx+dw,0);g.addColorStop(0,grey(150));g.addColorStop(1,grey(96));
+  poly(o,[[dx,dy],[dx+dw-3,dy+1],[dx+dw-3,bb-1],[dx,bb]],g);
+  rect(o,dx+dw-4,dy+1,1,dh-2,grey(220));
+  // panels: two columns, three rows, recessed
+  const pw=(dw-12)/2, ph=(dh-18)/3;
+  for(let c=0;c<2;c++)for(let r=0;r<3;r++){
+    const px=dx+4+c*(pw+3), py=dy+9+r*(ph+2.5);
+    rect(o,px,py,pw,ph,grey(108)); rect(o,px,py,pw,1,grey(64)); rect(o,px,py,1,ph,grey(64));
+    rect(o,px,py+ph-1,pw,1,grey(190)); rect(o,px+pw-1,py,1,ph,grey(190));
+    rect(o,px+2,py+2,pw-4,ph-4,grey(122));
+  }
+  // the slot near the top, glowing
+  const sx=dx+dw*.22, sw=dw*.5;
+  rect(o,sx-1,dy+2,sw+2,5,grey(200)); rect(o,sx,dy+3,sw,3,GRN(.5+.5*pulse));
+  for(let k=sx+2;k<sx+sw;k+=3)rect(o,k,dy+3,1,3,grey(60));
+  // hinges + rivets
+  [.12,.48,.84].forEach(f=>{const hy=dy+dh*f;rect(o,dx-2,hy,3,5,grey(230));rect(o,dx-2,hy+5,3,1,grey(90))});
+  for(let k=dy+3;k<bb-2;k+=6){rect(o,dx+1,k,1,1,grey(210));rect(o,dx+dw-6,k,1,1,grey(170))}
+  // handle + lock plate
+  const hy=dy+dh*.52; rect(o,dx+dw-9,hy-4,3,9,grey(170)); rect(o,dx+dw-14,hy-1,7,2,grey(245)); rect(o,dx+dw-8,hy+2,1,1,grey(30));
+  // kick plate
+  rect(o,dx+1,bb-6,dw-5,5,grey(160)); rect(o,dx+1,bb-6,dw-5,1,grey(230));
+  // keypad on the wall
+  { const kx=dx+dw+9, ky=dy+dh*.45; rect(o,kx,ky,6,9,grey(150)); rect(o,kx+1,ky+1,4,2,GRN(.9));
+    for(let a=0;a<2;a++)for(let b=0;b<2;b++)rect(o,kx+1+a*2,ky+4+b*2,1,1,grey(40)); }
+  // sign above door
+  { const sw2=19, sxx=vx-sw2/2-bw*.03, syy=dy-14; rect(o,sxx,syy,sw2,9,grey(30)); rect(o,sxx,syy,sw2,1,grey(170)); rect(o,sxx,syy+8,sw2,1,grey(80));
+    rect(o,sxx+sw2/2,syy-3,1,3,grey(120));
+    const flick=reduce||Math.sin(t/53)>-.97; ptext(o,'OPEN',sxx+2,syy+2,flick?GRN(1):GRN(.25)); }
+  // security camera, top right of back wall
+  { const cx=br-6, cy=by+4; rect(o,cx,cy,5,3,grey(200)); rect(o,cx+4,cy+1,1,1,(Math.floor(t/700)%2&&!reduce)?GRN(1):grey(60)); rect(o,cx+2,cy-3,1,3,grey(140)); }
+  // under-door light + pool on floor
+  rect(o,dx,bb-1,dw,1,GRN(.9*pulse));
+  g=o.createLinearGradient(0,bb,0,H);g.addColorStop(0,GRN(.55*pulse));g.addColorStop(.6,GRN(.12*pulse));g.addColorStop(1,GRN(0));
+  o.globalCompositeOperation='lighter';
+  poly(o,[[dx,bb],[dx+dw,bb],[dx+dw*2.4,H],[dx-dw*1.6,H]],g);
+  const rg=o.createRadialGradient(dx+dw,dy+dh*.5,1,dx+dw,dy+dh*.5,dh*.7);rg.addColorStop(0,GRN(.28*pulse));rg.addColorStop(1,GRN(0));
+  o.fillStyle=rg;o.fillRect(0,0,W,H);
+  o.globalCompositeOperation='source-over';
+  // ceiling lamp with neutral cone over the line
+  { const lx=W*.3, ly=H*.16; line(o,lx,0,lx,ly-3,grey(110)); poly(o,[[lx-3,ly-3],[lx+3,ly-3],[lx+6,ly+1],[lx-6,ly+1]],grey(200)); rect(o,lx-1,ly+1,3,1,grey(255));
+    const cg=o.createLinearGradient(0,ly,0,H);cg.addColorStop(0,'rgba(255,255,255,.16)');cg.addColorStop(1,'rgba(255,255,255,0)');
+    o.globalCompositeOperation='lighter';poly(o,[[lx-5,ly+1],[lx+5,ly+1],[lx+W*.2,H],[lx-W*.2,H]],cg);o.globalCompositeOperation='source-over'; }
+  // the roped queue: posts + green ropes along a path from the viewer to the door
+  const [x0,y0]=G.P0,[x1,y1]=G.P1, path=u=>[lerp(x0,x1,u),lerp(y0,y1,u)], depth=y=>clamp((y-bb)/(H-bb),0,1);
+  const posts=[];for(let u=0;u<=1.001;u+=.19){const [px,py]=path(u),d=depth(py),off=3+12*d;posts.push([px-off,py-off*.25,d],[px+off,py+off*.25,d])}
+  const left=posts.filter((_,i)=>i%2===0), right=posts.filter((_,i)=>i%2===1);
+  [left,right].forEach(side=>{for(let i=0;i<side.length-1;i++){const a=side[i],b=side[i+1],ah=4+10*a[2],bh=4+10*b[2];rope(o,a[0],b[0],a[1]-ah*.75);o.strokeStyle=GRN2(1);o.beginPath();o.moveTo(a[0],a[1]-ah*.75);o.quadraticCurveTo((a[0]+b[0])/2,(a[1]-ah*.75+b[1]-bh*.75)/2+2+a[2]*2,b[0],b[1]-bh*.75);o.stroke()}});
+  // people
+  const c=Math.floor(t/CYCLE), cph=(t%CYCLE)/CYCLE, mv=reduce?0:smooth(clamp((cph-.55)/.45,0,1)), walking=mv>0&&mv<1;
+  const people=[];
+  for(let k=-1;k<Q;k++){
+    const id=c+k+1; let u, a=1;
+    if(k===-1){u=.97+mv*.12;a=1-mv}else{u=.97-(k+1-mv)*.19;if(k===Q-1)a=mv}
+    if(a<=0) continue;
+    const [px,py]=path(u), d=depth(py);
+    const youId=id%Q===0;
+    const bob=(!walking&&!reduce&&Math.sin(t/300+id*1.7)>.93)?1:0;
+    people.push({x:px+(k%2?1:-1)*d*1.5,y:py-bob,h:d<.5?18:27,key:VAR[id%4]+(youId?'Y':''),walk:walking,a,you:youId,slot:k});
+  }
+  people.sort((p,q)=>p.y-q.y);
+  // soft shadows
+  people.forEach(p=>{o.fillStyle='rgba(0,0,0,.55)';o.fillRect(Math.round(p.x-p.h*.25),Math.round(p.y),Math.round(p.h*.5),1)});
+  // posts in front-to-back order with people
+  const draws=people.map(p=>({y:p.y,f:()=>person(o,p.key,p.x,p.y,p.h,p.walk,p.a)})).concat(posts.map(pt=>({y:pt[1],f:()=>post(o,pt[0],pt[1],4+10*pt[2])})));
+  draws.sort((a,b)=>a.y-b.y).forEach(d=>d.f());
+  // dust in the green light
+  if(!reduce) for(let i=0;i<34;i++){const s=(i*97.13)%1, s2=(i*31.7)%1, sp=.004+s2*.01;const yy=bb+(H-bb)*((s2+ (1-((t*sp*.01+s)%1)))%1);const xx=dx+dw*.5+(s-.5)*dw*2.2*(.4+depth(yy));rect(o,xx,yy,1,1,GRN(.35+.4*s2))}
+  const you=people.filter(p=>p.you).sort((a,b)=>b.a-a.a)[0];
+  return {G,you};
+}
+function heroOverlay(ctx,geo,cell){
+  const {G,you}=geo; if(!G) return;
+  // "you" tag
+  if(you&&you.a>.5){
+    const x=you.x*cell, y=(you.y-you.h)*cell-12;
+    ctx.font='600 11px "IBM Plex Mono", monospace'; ctx.fillStyle='#5fe08e'; ctx.textAlign='center'; ctx.fillText('you',x,y); ctx.fillRect(x-1,y+3,2,5); ctx.textAlign='left';
+    $('#scYou').textContent=you.slot<0?'at the door':ord(you.slot+1); $('#scAhead').textContent=Math.max(0,you.slot);
+  }
+  // leader line from the slot card to the door slot
+  const card=$('#slotCard'), host=$('#heroR');
+  if(card.offsetParent){const cr=card.getBoundingClientRect(), hr=host.getBoundingClientRect();
+    const x1=cr.right-hr.left, y1=cr.bottom-hr.top, x2=(G.dx+G.dw*.22)*cell, y2=(G.dy+4)*cell;
+    ctx.fillStyle='#2fae62'; const n=Math.hypot(x2-x1,y2-y1)/7|0; for(let i=0;i<=n;i++){const u=i/n;ctx.fillRect(x1+(x2-x1)*u-1,y1+(y2-y1)*u-1,2,2)}
+    ctx.fillStyle='#5fe08e';ctx.fillRect(x2-2,y2-2,4,4);}
+}
+
+/* ---------- mini scene in the stand card ---------- */
+const mini=new Stage($('#miniCanvas'),3);
+function miniScene(o,W,H,t){
+  const floor=Math.round(H*.78), glow=reduce?.8:.6+.4*Math.sin(t/700);
+  sideRoom(o,W,H,floor);
+  const dw=Math.max(12,Math.round(W*.26)), dx=W-dw-5, top=Math.max(9,floor-Math.round(H*.58));
+  sideDoor(o,dx,top,floor,dw,glow,t);
+  rect(o,dx+dw/2-8,top-8,17,7,grey(28)); ptext(o,'OPEN',dx+dw/2-7,top-7,GRN(1));
+  // queue post + rope behind you
+  post(o,5,floor,9); post(o,dx-6,floor,9); rope(o,5,dx-6,floor-7);
+  // your lit tile
+  const yx=Math.round(dx-16);
+  rect(o,yx-7,floor,14,1,GRN(1)); rect(o,yx-6,floor+1,12,1,GRN(.5));
+  const bob=!reduce&&Math.sin(t/500)>.85?1:0;
+  person(o,'BY',yx,floor-bob,18,false,1);
+  // ticket held up: small floating ticket above
+  const ty=top+2+(reduce?0:Math.round(Math.sin(t/600)));
+  rect(o,yx-4,ty,9,5,grey(235)); rect(o,yx-3,ty+1,7,1,GRN(1)); ptext(o,'1',yx-1,ty+6,GRN(.9));
+}
+
+/* ---------- line view: side scene driven by the inputs ---------- */
+const lineSt=new Stage($('#lineCanvas'),3);
+function lnVals(){return{ahead:Math.round(clamp(num($('#lnAheadIn').value,4),0,500)),per:clamp(num($('#lnPerIn').value,1),.05,1000),hrs:+$('#lnClock').value}}
+function lineScene(o,W,H,t){
+  const floor=Math.round(H*.82), {ahead,per,hrs}=lnVals(), done=hrs/per;
+  sideRoom(o,W,H,floor);
+  const dw=24, dx=W-dw-8, top=floor-62;
+  const lit=done>=ahead; sideDoor(o,dx,top,floor,dw,lit?1:.45+.15*Math.sin(t/800),t);
+  rect(o,dx+dw/2-8,top-9,17,7,grey(28)); ptext(o,'OPEN',dx+dw/2-7,top-8,GRN(1));
+  const gap=17, shown=Math.min(ahead,Math.floor((dx-24)/gap));
+  for(let x=dx-10;x>4;x-=gap*2) post(o,x,floor,16);
+  for(let x=dx-10;x-gap*2>4;x-=gap*2) rope(o,x-gap*2,x,floor-13);
+  let youGeo=null;
+  for(let i=ahead;i>=0;i--){
+    const rel=i-done; if(rel< -1) continue;
+    const isYou=i===ahead, slot=isYou?Math.min(rel,shown+.0001):rel;
+    if(!isYou&&rel>shown) continue;
+    let x=dx-14-slot*gap, a=1; if(rel<0){x=dx-14-rel*14;a=1+rel}
+    if(x<4) continue;
+    const walking=!reduce&&(rel%1)>.05&&(rel%1)<.95;
+    person(o,VAR[i%4]+(isYou?'Y':''),x,floor,36,walking,a);
+    if(isYou) youGeo={x,y:floor-36,rel};
+  }
+  return {youGeo,hidden:Math.max(0,ahead-shown),done,ahead,floor};
+}
+function lineOverlay(ctx,g,cell,w,h){
+  ctx.font='11px "IBM Plex Mono", monospace'; ctx.fillStyle='#7f8c83';
+  ctx.fillText('back',10,h-10); ctx.textAlign='right'; ctx.fillText('front',w-10,h-10); ctx.textAlign='left';
+  if(g.hidden>0){ctx.fillText('+'+g.hidden+' more ahead',10,20)}
+  if(g.youGeo&&g.youGeo.rel>=0){ctx.fillStyle='#5fe08e';ctx.font='600 11px "IBM Plex Mono", monospace';ctx.textAlign='center';ctx.fillText('you',g.youGeo.x*cell,g.youGeo.y*cell-8);ctx.textAlign='left'}
+  ctx.font='600 12px "IBM Plex Mono", monospace';
+  if(g.done>=g.ahead+1){ctx.fillStyle='#5fe08e';ctx.fillText('paid. '+fmt(num($('#lnShares').value,0),2)+' SOL to the holder',10,g.hidden?38:20)}
+  else{ctx.fillStyle='#e2ebe4';ctx.fillText(Math.max(0,Math.ceil(g.ahead-g.done))+' ahead · '+Math.min(g.ahead,Math.floor(g.done))+' paid',10,g.hidden?38:20)}
+}
+
+/* ---------- life view ---------- */
+const lifeSt=new Stage($('#lifeCanvas'),3);
+const LIFE=[
+ ['stand','You stand. Your SOL goes to a program account made for this place and becomes a ticket at the back of the line. You hold the place.'],
+ ['open','You set a discount. The place lights up on the wall at that discount under whatever the vault owes when someone buys.'],
+ ['buy','A buyer steps onto your square and pays you SOL in the same transaction. The door fee comes out of the sale. The square stays where it stood.'],
+ ['wait','The line moves as borrowers repay. Nothing about the ticket changes, only who holds the place.'],
+ ['collect','The vault pays the ticket at the head of the line. The SOL goes to whoever holds the place then. Rent returns to the wallet that first stood.']
+];
+let lifeStep=0, lifeLoop=false;
+function lifeScene(o,W,H,t){
+  const floor=Math.round(H*.8), s=lifeStep;
+  sideRoom(o,W,H,floor);
+  const dw=24, dx=W-dw-8, top=floor-60;
+  sideDoor(o,dx,top,floor,dw,s===4?1:.4+.1*Math.sin(t/700),t);
+  rect(o,dx+dw/2-8,top-9,17,7,grey(28)); ptext(o,'OPEN',dx+dw/2-7,top-8,GRN(1));
+  const gap=Math.min(24,(dx-60)/6), mySlot=[5,5,5,2,0][s];
+  for(let i=0;i<6;i++){
+    const x=dx-16-i*gap, mine=i===mySlot;
+    rect(o,x-8,floor,16,1,mine&&s>=1?GRN(1):grey(90));
+    if(i<mySlot) person(o,VAR[(i+1)%4],x,floor,36,false,1);
+    if(mine){
+      if(s<2) person(o,'AY',x,floor,36,false,1);
+      else person(o,'C',x,floor,36,false,1);
+      if(s===1){rect(o,x-6,floor-50,12,8,grey(30));rect(o,x-6,floor-50,12,1,GRN(1));ptext(o,'$',x-1,floor-48,GRN(1))}
+    }
+  }
+  if(s>=2){ // you walking away left with SOL
+    const ux=16+(reduce?0:(t/50)%6); person(o,'AY',ux,floor,36,true,1);
+    for(let k=0;k<3;k++){const bob=reduce?0:Math.sin(t/200+k)*1.5;rect(o,ux+11+k*4,floor-22+bob,2,2,GRN(1))}
+  }
+  if(s===4){for(let k=0;k<4;k++){const u=reduce?.5:((t/900)+k/4)%1;rect(o,lerp(dx,dx-16-mySlot*gap,u),floor-30-Math.sin(u*Math.PI)*14,2,2,GRN(1))}}
+  return {s,mySlot,gap,dx,floor};
+}
+function lifeOverlay(ctx,g,cell){
+  ctx.font='11px "IBM Plex Mono", monospace';ctx.fillStyle='#e2ebe4';
+  ctx.fillText('place holder: '+(g.s>=2?'buyer':'you'),10,18);
+  ctx.fillStyle='#5fe08e';
+  const msg=['ticket filed','listed at a discount','buyer pays you SOL now','line moves','vault pays the holder'][g.s];
+  ctx.fillText(msg,10,34);
+}
+
+/* =========================================================
+   App state + UI
+   ========================================================= */
+let shares=25, knocks=0, held=null, logN=0;
+try{knocks=+localStorage.getItem('door_knocks')||0}catch(e){}
+
+const views=['home','line','sell','buy','token','how'];
+function route(){
+  let h=(location.hash||'#home').slice(1); if(!views.includes(h)) h='home';
+  views.forEach(v=>$('#v-'+v).classList.toggle('on',v===h));
+  $$('.tabs a').forEach(a=>{if(a.getAttribute('href')==='#'+h)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  window.scrollTo(0,0);
+  requestAnimationFrame(resizeAll);
+}
+addEventListener('hashchange',route);
+function resizeAll(){[hero,mini,lineSt,lifeSt].forEach(s=>s.resize());drawStatic()}
+function drawStatic(){lineSt.render(lineScene,performance.now(),lineOverlay);lifeSt.render(lifeScene,performance.now(),lifeOverlay)}
+
+function ulog(msg){const el=$('#ulog');if(!logN)el.innerHTML='';logN++;const d=document.createElement('div');d.innerHTML=`<span class="muted">${new Date().toISOString().slice(11,16)}</span>${msg}`;el.prepend(d);while(el.children.length>8)el.lastChild.remove();$('#logCount').textContent=logN}
+
+function updateHome(){
+  $('#hsPlace').textContent='1st'; $('#hsAhead').textContent='0 SOL';
+  $('#hsSell').textContent=fmt(shares*(1-.0025),4)+' SOL';
+}
+function updateLine(){
+  const {ahead,per}=lnVals(), wait=(ahead+1)*per;
+  $('#lnPlace').textContent=ord(ahead+1); $('#lnPlace2').textContent=ord(ahead+1);
+  $('#lnWait').textContent=ahead?'about '+fmt(wait,1)+'h':'about '+fmt(per,1)+'h, first up';
+  $('#lnOwed').textContent=fmt(shares,2)+' SOL';
+  $('#lnLede').textContent=ahead?`${ahead} ${ahead===1?'person is':'people are'} ahead of you, about ${fmt(per,1)}h each. Drag the clock to watch the line move.`:'Nobody is ahead of you. You are first through the door when the vault pays.';
+  const mx=Math.max(4,Math.ceil(wait*1.25*4)/4); $('#lnClock').max=mx; if(+$('#lnClock').value>mx)$('#lnClock').value=mx;
+  $('#lnClockV').textContent=$('#lnClock').value;
+  lineSt.render(lineScene,performance.now(),lineOverlay);
+}
+const TIERS=[{name:'Visitor',min:0,fee:.30},{name:'Tenant',min:1e5,fee:.20},{name:'Keyholder',min:1e6,fee:.10},{name:'Landlord',min:5e6,fee:0}];
+const tierFor=h=>TIERS.reduce((t,x)=>h>=x.min?x:t,TIERS[0]);
+function updateSell(){
+  const bps=+$('#slDisc').value, o=num($('#slAmt').value,0), now=o*(1-bps/1e4), tier=tierFor(+$('#tkHold').value), fee=now*.003, feeD=now*tier.fee/100;
+  $('#slDiscV').textContent=(bps/100).toFixed(2)+'%'; $('#slBps').textContent=bps;
+  $('#slHead').textContent=fmt(now-feeD,4)+' SOL';
+  $('#slLede').textContent=`If someone buys your place at ${(bps/100).toFixed(2)}% under what the vault owes. If nobody does, you stay in line and the vault pays you ${fmt(o,2)} SOL in turn.`;
+  $('#slNow').textContent=fmt(now,4)+' SOL, now'; $('#slLater').textContent=fmt(o,4)+' SOL';
+  $('#slGive').textContent=fmt(o-now,4)+' SOL'; $('#slFee').textContent=fmt(fee,4)+' SOL';
+  $('#slFeeD').textContent=fmt(feeD,4)+' SOL · '+tier.name; $('#slBig').textContent=fmt(now-feeD,4)+' SOL';
+  $('#barNow').style.width=(o?(now-feeD)/o*100:0)+'%'; $('#barLater').style.width=(o?100:0)+'%';
+  $('#barNowV').textContent=fmt(now-feeD,3); $('#barLaterV').textContent=fmt(o,3);
+  $$('#v-sell .chip').forEach(c=>c.classList.toggle('on',+c.dataset.d===bps));
+}
+function updateBuy(){
+  const ow=num($('#byOw').value,0), d=num($('#byD').value,0)/100, w=Math.max(.1,num($('#byW').value,1)), pay=ow*(1-d), make=ow-pay;
+  $('#byPay').textContent=fmt(pay,4)+' SOL'; $('#byOwed').textContent=fmt(ow,4)+' SOL'; $('#byMake').textContent=fmt(make,4)+' SOL';
+  $('#byApr').textContent=pay>0?fmt(make/pay*(8760/w)*100,0)+'%':'–';
+}
+function updateToken(){
+  const h=+$('#tkHold').value, vol=+$('#tkVol').value, t=tierFor(h);
+  $('#tkHoldV').textContent=fmt(h,0); $('#tkVolV').textContent=fmt(vol,0)+' SOL';
+  $('#tkTier').textContent=t.name; $('#tkFee').textContent=t.fee.toFixed(2)+'%';
+  $('#tkShare').textContent=(h/1e9*100).toFixed(3)+'%'; $('#tkWeek').textContent=fmt(vol*.003*.6*h/1e9,4);
+  $$('.tier').forEach(el=>el.classList.toggle('on',+el.dataset.min===t.min)); updateSell();
+}
+function setShares(v){v=num(v,NaN);if(!(v>0))return;shares=Math.min(v,1e7);$('#hsShares').value=shares;$('#lnShares').value=shares;$$('[data-sz]').forEach(c=>c.classList.toggle('on',+c.dataset.sz===shares));updateHome();updateLine()}
+
+$('#hsShares').addEventListener('input',e=>setShares(e.target.value));
+$('#lnShares').addEventListener('input',e=>setShares(e.target.value));
+$$('[data-sz]').forEach(c=>c.addEventListener('click',()=>setShares(c.dataset.sz)));
+['#lnAheadIn','#lnPerIn'].forEach(s=>$(s).addEventListener('input',updateLine));
+$('#lnClock').addEventListener('input',()=>{$('#lnClockV').textContent=$('#lnClock').value;lineSt.render(lineScene,performance.now(),lineOverlay)});
+$('#slDisc').addEventListener('input',updateSell); $('#slAmt').addEventListener('input',updateSell);
+$$('[data-d]').forEach(c=>c.addEventListener('click',()=>{$('#slDisc').value=c.dataset.d;updateSell()}));
+['#byOw','#byD','#byW'].forEach(s=>$(s).addEventListener('input',updateBuy));
+$('#tkHold').addEventListener('input',updateToken); $('#tkVol').addEventListener('input',updateToken);
+$('#lifeBtns').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;const s=+b.dataset.s;lifeLoop=s<0;if(!lifeLoop)setLife(s);$$('#lifeBtns .chip').forEach(c=>c.classList.toggle('on',c===b))});
+function setLife(s){lifeStep=s;$('#lifeText').textContent=LIFE[s][1];$('#lifeCap').textContent=LIFE[s][0];lifeSt.render(lifeScene,performance.now(),lifeOverlay)}
+
+$('#wall').innerHTML=Array.from({length:24},(_,i)=>`<div class="pane-w">${i===0?'front':''}</div>`).join('');
+
+/* wallet button: no popup, the label answers in place */
+$('#walletBtn').addEventListener('click',e=>{const b=e.currentTarget;if(b._t)return;b.textContent='Opens at launch';b._t=setTimeout(()=>{b.textContent='Connect wallet';b._t=null},1800)});
+
+/* actions */
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,2200)}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;
+  if(b.dataset.act==='stand'){held={amt:shares};$('#placePill').classList.add('on');$('#placePill span').textContent='1st · preview';
+    $('#railPlace').innerHTML=`<div class="kv"><span>filed</span><span>${fmt(shares,2)} SOL</span></div><div class="kv"><span>place</span><span class="g">1st</span></div><div class="kv"><span>status</span><span>preview</span></div>`;
+    ulog(` stood with ${fmt(shares,2)} SOL`); log('door.stand('+shares+')','preview only. signing opens at launch.'); toast('Stand previewed')}
+  if(b.dataset.act==='list'){if(!held){toast('Stand first. You need a place to price.');log('door.open()','no place yet. stand first.');return}
+    ulog(` priced at ${(+$('#slDisc').value/100).toFixed(2)}% off`); log('door.open('+$('#slDisc').value+')','preview: your place lights up on the wall'); toast('Listing previewed')}
+});
+$('#alertBtn').addEventListener('click',()=>{const v=num($('#alertD').value,0);if(!(v>0)){$('#alertNote').textContent='Enter a discount above 0%, like 0.40.';return}$('#alertNote').textContent=`Watching for places at ${v.toFixed(2)}% off or more.`;ulog(` alert at ${v.toFixed(2)}%`)});
+
+/* knock */
+let knockFlash=0;
+function doKnock(){knocks++;try{localStorage.setItem('door_knocks',knocks)}catch(e){};$('#sKnock').textContent=knocks;knockFlash=performance.now();ulog(` knocked (#${knocks})`)}
+$('#knockBtn').addEventListener('click',()=>{doKnock();log('knock',knocks%10===0?`knock #${knocks}. someone knocks back.`:`knock #${knocks}`)});
+
+/* console */
+function log(cmd,out){const L=$('#clog');if(cmd){const a=document.createElement('div');a.className='in';a.textContent=cmd;L.append(a)}if(out!=null){const b=document.createElement('div');b.className='out';b.textContent=out;L.append(b)}L.scrollTop=L.scrollHeight}
+const CMDS={
+ help:()=>'line · places · price <bps> · tier <amount> · knock · door · go <page> · clear',
+ line:()=>'0  // the program goes live at launch',
+ places:()=>'0 listed',
+ knock:()=>{doKnock();return `knock #${knocks}. the door hears you.`},
+ door:()=>'OpenDoor · $DOOR · 0.30% fee on sales · 60% holders / 25% buyback / 15% rent desk · CA is posted on X @OpenDoorSol',
+ price:a=>{const b=parseInt(a);if(!(b>=1&&b<=300))return 'price takes basis points, 1 to 300';$('#slDisc').value=b;updateSell();return `door.open(${b}) · a buyer would pay ${fmt(num($('#slAmt').value,0)*(1-b/1e4),4)} SOL`},
+ tier:a=>{const n=num(a,NaN);if(!(n>=0))return 'tier takes a $DOOR amount';const t=tierFor(n);return `${t.name} · fee ${t.fee.toFixed(2)}%`},
+ go:a=>{if(views.includes(a)){location.hash=a;return 'opening '+a}return 'pages: '+views.join(', ')}
+};
+$('#conForm').addEventListener('submit',e=>{e.preventDefault();const v=$('#conIn').value.trim();if(!v)return;$('#conIn').value='';const [c,...a]=v.split(/\s+/);if(c.toLowerCase()==='clear'){$('#clog').innerHTML='';return}const fn=CMDS[c.toLowerCase()];log(v,fn?fn(a.join(' ')):`unknown: ${c}. type help`)});
+$('#conMin').addEventListener('click',()=>{const m=$('#console').classList.toggle('min');$('#conMin').textContent=m?'▢':'_'});
+
+/* walkthrough (kept) */
+const TOUR=[['home','The door','A SOL vault lends out its loose SOL. When it runs dry, withdrawals line up behind the door.'],['line','Stand in line','File your withdrawal through the door. Same line, same wait, but the place is yours to sell.'],['sell','Price your place','Pick a discount. A buyer pays you SOL now and takes over the wait.'],['buy','Buy a place','Buy someone else\'s place at a discount and collect the full amount when the line reaches it.'],['token','$DOOR','Every sale pays a 0.30% fee. Holders get most of it and pay less on their own sales.']];
+let ti=0;
+function tour(){const s=TOUR[ti];location.hash=s[0];$('#mTitle').textContent=`walkthrough ${ti+1} / ${TOUR.length}`;
+  $('#mBody').innerHTML=`<h3 style="margin-bottom:8px">${s[1]}</h3><p style="margin:0 0 14px;color:#c4cfc7">${s[2]}</p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="tPrev" ${ti?'':'disabled'}>Back</button><button class="btn solid" id="tNext">${ti<TOUR.length-1?'Next':'Done'}</button></div>`;
+  $('#modal').hidden=false;
+  $('#tNext').onclick=()=>{if(ti<TOUR.length-1){ti++;tour()}else{$('#modal').hidden=true;ti=0}};$('#tPrev').onclick=()=>{if(ti){ti--;tour()}}}
+$('#tourBtn').addEventListener('click',()=>{ti=0;tour()});
+$('#mClose').addEventListener('click',()=>$('#modal').hidden=true);
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')$('#modal').hidden=true});
+addEventListener('keydown',e=>{if(e.key==='Escape')$('#modal').hidden=true});
+
+function clock(){$('#sClock').textContent=new Date().toISOString().slice(11,16)+' UTC'}
+
+/* render loop (~24fps for the dithered scenes) */
+let last=0, lastLife=0;
+function frame(t){
+  if(t-last>40){last=t;
+    if($('#v-home').classList.contains('on')){
+      hero.render(heroScene,reduce?0:t,(ctx,g,c,w,h)=>{heroOverlay(ctx,g,c);if(knockFlash&&t-knockFlash<350){ctx.fillStyle=`rgba(95,224,142,${.18*(1-(t-knockFlash)/350)})`;ctx.fillRect(0,0,w,h)}});
+      mini.render(miniScene,reduce?0:t);
+    }
+    if(!reduce&&$('#v-line').classList.contains('on')) lineSt.render(lineScene,t,lineOverlay);
+    if($('#v-how').classList.contains('on')){if(lifeLoop&&t-lastLife>2400){lastLife=t;setLife((lifeStep+1)%5)} if(!reduce)lifeSt.render(lifeScene,t,lifeOverlay)}
+  }
+  requestAnimationFrame(frame);
+}
+
+/* boot */
+$('#sKnock').textContent=knocks;
+route(); updateHome(); updateLine(); updateToken(); updateBuy(); setLife(0); clock();
+log('door.status()','pre-launch · the program goes live with $DOOR');
+log('help',CMDS.help());
+setInterval(clock,30000);
+addEventListener('resize',resizeAll);
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(resizeAll);
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
